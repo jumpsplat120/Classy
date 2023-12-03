@@ -1,8 +1,8 @@
-local Object, private, path, Symbol
+local Object, private, file_path, Symbol
 
-file_path = (...):match("(.-)[^%.]+$"):gsub("/", ".")
+file_path = (...):match("(.-)[^%.]+$")
 private   = require(file_path .. "instances")
-Object    = require(file_path .. "Object")
+Object    = require(file_path)
 
 Symbol = Object:extend()
 
