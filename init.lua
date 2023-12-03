@@ -157,14 +157,11 @@ function Object:is(class)
 end
 
 function Object:tostringHelper(...)
-	local str, t
+    local args = table.concat({ ... }, ", ") 
 
-	str = " "
-	t = self.is_instance and self.type or self.__type
+    args = args ~= "" and " " .. args or args
 
-	for _, v in ipairs({...}) do str = str .. tostring(v) ..", " end
-	
-	return "[<" .. t .. ">" .. (#str > 1 and str:sub(1, -3) or "").. "]"
+	return "[<" .. self.type .. ">" .. args .. "]"
 end
 
 function Object:__tostring()
