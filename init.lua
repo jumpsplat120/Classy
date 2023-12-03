@@ -80,7 +80,7 @@ function Object:__call(...)
 	private[ins] = { instance = true }
 
 	r = ins:new(...)
-	
+
 	return r or ins
 end
 
