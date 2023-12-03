@@ -7,7 +7,9 @@ Object    = require(file_path)
 Symbol = Object:extend()
 
 function Symbol:new(id)
-    private[self].id = id and tostring(id) or math.uuid()
+    private[self] = {
+        id = id and tostring(id) or math.uuid()
+    }
 end
 
 function Symbol.__get:id() 
