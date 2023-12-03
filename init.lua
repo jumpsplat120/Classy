@@ -74,13 +74,13 @@ Object.__set = {}
 
 function Object:__call(...)
     local ins, r
-
+    
 	ins = setmetatable({}, self)
-
+    
 	private[ins] = { instance = true }
-
+    
 	r = ins:new(...)
-
+    
 	return r or ins
 end
 
