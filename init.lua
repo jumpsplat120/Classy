@@ -1,17 +1,7 @@
---
--- Classy
---
--- Copyright (c) 2023, jumpsplat120
---
--- This module is free software; you can redistribute it and/or modify it under
--- the terms of the MIT license. See LICENSE for details.
+local Object, private, index, newindex
 
-local Object, file_path, private
-local index, newindex
-
-Object    = {}
-file_path = (...):match("(.-)[^%.]+$")
-private   = require(file_path .. "instances")
+Object  = {}
+private = require(... .. ".instances")
 
 --In index/newindex, we `while true do` because
 --for newindex, we want to avoid the back and forth
