@@ -179,7 +179,11 @@ function Object.__get:type()
 end
 
 function Object.__get:is_instance()
-	return private[self] and private[self].instance or false
+    local p = private[self]
+
+    if p then return p.instance end
+    
+	return false
 end
 
 Object.__type = "object"
