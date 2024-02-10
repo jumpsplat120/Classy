@@ -1,7 +1,8 @@
-local Object, private, index, newindex
+local Object, private, index, newindex, varargs
 
 Object  = {}
 private = require(... .. ".instances")
+varargs = require("lib.varargs")
 
 --In index/newindex, we `while true do` because
 --for newindex, we want to avoid the back and forth
@@ -157,10 +158,18 @@ function Object:is(class)
 end
 
 function Object:tostringHelper(...)
-    local args = table.concat({ ... }, ", ") 
+    local args = ""
+
+    for i, v in varargs(...) do
+        if i == 1 then
+            args = tostring(v)
+        else
+            args = args .. ", " .. tostring(v)
+        end
+    end
 
     args = args ~= "" and " " .. args or args
-
+    
 	return "[<" .. self.type .. ">" .. args .. "]"
 end
 
