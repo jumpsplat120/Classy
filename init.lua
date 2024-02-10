@@ -184,7 +184,7 @@ function Object:__concat(value)
 end
 
 function Object.__get:type()
-    return getmetatable(self).__type
+    return self.__type or getmetatable(self).__type
 end
 
 function Object.__get:is_instance()
