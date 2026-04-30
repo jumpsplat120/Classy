@@ -138,7 +138,7 @@ function Object:implements(...)
     return true
 end
 
---Takes classes and smushes them together into a Class. This is what's
+--Takes the class and any mixins and smushes them together into a Class. This is what's
 --used when returning the class from it's file.
 function Object:create(...)
     local args, class
@@ -157,8 +157,19 @@ function Object:create(...)
     }
 
     assert(args[1].new, "Class is missing 'new' constructor.")
+    
+    class.__constructor = args[1].new
+
+    --We wrap the new constructor in an anonymous function that places an assert at the top.
+    --We need to make sure that the user doesn't circumvent the constructor process, or else
+    --a bunch of stuff would go sideways without being super clear why.
+    args[1].new = function(self, ...)
+        assert(self ~= class, "You can not call the 'new' method directly.")
 
     for i = 1, #args, 1 do
+        return class.__constructor(self, ...)
+    end
+
         --All classes get placed in the __implemented table for reference later.
         class.__implemented[args[i]] = true
 
