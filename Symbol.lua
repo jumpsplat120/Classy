@@ -3,9 +3,10 @@ local Object, Symbol, private, file_path
 --".Symbol" is 7 characters, so we -8 to get just the directory.
 file_path = (...):sub(1, -8)
 
-private = require(file_path .. ".instances")
 Object  = require(file_path)
-Symbol  = { __get = {} }
+private = require(file_path .. ".instances")
+
+Symbol  = Object:init()
 
 function Symbol:new(id)
     private[self].id = id and tostring(id) or math.uuid()
