@@ -213,4 +213,9 @@ function Object:create(...)
     })
 end
 
-return Object
+return setmetatable(Object, {
+    __tostring = function()
+        return "[<object> Class]"
+    end,
+    __metatable = Object
+})
