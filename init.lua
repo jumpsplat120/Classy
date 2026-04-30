@@ -166,10 +166,12 @@ function Object:create(...)
     args[1].new = function(self, ...)
         assert(self ~= class, "You can not call the 'new' method directly.")
 
-    for i = 1, #args, 1 do
         return class.__constructor(self, ...)
     end
 
+    --We iterate backwards so that the first argument can be the main class, followed
+    --by all it's mixins.
+    for i = #args, 1, -1 do
         --All classes get placed in the __implemented table for reference later.
         class.__implemented[args[i]] = true
 
