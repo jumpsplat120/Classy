@@ -34,8 +34,8 @@ end
 --a reference to one of the class instance's methods.
 function Object:index(key)
     local mt, result
-
-    assert(key ~= "new", "Calling the 'new' constructor directly is invalid. Instead, call the class directly.")
+    
+    assert(key ~= "new", "You can not call the 'new' method on an instance of a class.")
     assert(self ~= Object, "'Object:index' is not meant to be called directly.")
 
     mt = getmetatable(self)
