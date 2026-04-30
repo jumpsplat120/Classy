@@ -1,200 +1,221 @@
-local Object, private, index, newindex, varargs
+local Object, private
 
 Object  = {}
 private = require(... .. ".instances")
-varargs = require("lib.varargs")
 
---In index/newindex, we `while true do` because
---for newindex, we want to avoid the back and forth
---between index/newindex, and in index, we want to
---make sure we're passing the right `self` along. So,
---in a case like the following example...
---```lua
---function A:new(x, y)
---  private[self].values = { x, y }
---end
---
---function A.__get:x()
---  return private[self].values[1]
---end
---
---B = A:extend()
---
---function B.__get:y()
---  return private[self].values[2]
---end
---
---obj = B(1, 2)
---print(obj.x, obj.y)
---```
---what would happen if we just indexed all the way
---down the chain, is that obj.y would work, because
---we'd be passing `self`, but obj.x wouldn't, because
---`self` would be `getmetatable(self)`. Also, to avoid
---having to search the mt chain twice, we check both
---the getters and the raw at the same time. So if `B.x`
---existed, and `A.__get:x` existed, we'd get `B.x` since
---it's higher in the chain.
-function index(self, key)
-    local mt, get, raw
-
-    mt = getmetatable(self)
-    
-    while mt do
-        get = rawget(rawget(mt, "__get"), key)
-        raw = rawget(mt, key)
-
-        if get then return get(self) end
-        if raw then return raw       end
-
-        mt = getmetatable(mt)
-    end
+--Helper function that creates the table for an object.
+function Object:init()
+    return {
+        __get = {},
+        __set = {}
+    }
 end
 
-function newindex(self, key, value)
-    local mt, set
-
-    mt = getmetatable(self)
-    
-    while mt do
-        set = rawget(rawget(mt, "__set"), key)
-
-        if set then return set(self, value) end
-
-        mt = getmetatable(mt)
-    end
-
-    rawset(self, key, value)
-end
-
-Object.__index    = index
-Object.__newindex = newindex
-
-Object.__get = {}
-Object.__set = {}
-
-function Object:__call(...)
+--What is used internally when creating an object instance. This creates the
+--private table, creates the actual instance, as well as handles non traditional
+--return values.
+function Object:call(...)
     local ins, r
     
+    assert(self ~= Object, "'Object:call' is not meant to be called directly.")
+
 	ins = setmetatable({}, self)
     
-	private[ins] = { instance = true }
+	private[ins] = {}
     
-	r = ins:new(...)
+    --Avoids triggering index, which would throw an error, since we don't
+    --want the dev to call new directly.
+	r = self.new(ins, ...)
     
 	return r or ins
 end
 
-function Object:extend()
-    local class = {}
+--Is called when the key doesn't exist on the table. 99% of the time that will be
+--a reference to one of the class instance's methods.
+function Object:index(key)
+    local mt, result
+    
+    assert(key ~= "new", "You can not call the 'new' method on an instance of a class.")
+    assert(self ~= Object, "'Object:index' is not meant to be called directly.")
 
-    for k, v in pairs(self) do
-		if k:sub(1, 2) == "__" then class[k] = v end
-	end
+    mt = getmetatable(self)
 
-    class.__get = {}
-    class.__set = {}
+    --A getter supercedes a method with the same name. In general though, the
+    --dev shouldn't be creating getters and methods with the same name anyways.
+    --It's confusing.
+    result = mt.__get[key] and mt.__get[key](self) or mt[key]
 
-    return setmetatable(class, self)
+    --Special case for "type". We could create a special "getter" for just type,
+    --but it runs the risk of being overwritten. However, if the dev wants to
+    --create a method called "type", then we want to let them use that version.
+    --We only return the __type if there's no result.
+    if not result and key == "type" then
+        return mt.__type or "object"
+    end
+
+    return result
 end
 
-function Object:implement(...)
-    local implemented
-
-    if not rawget(self, "__implemented") then rawset(self, "__implemented", {}) end
-
-    implemented = rawget(self, "__implemented")
-
-	for i, class in pairs({...}) do
-        rawset(implemented, i, class)
-		
-        table.map(class, function(k, v)
-			if k == "__get" or k == "__set" then
-				local tbl = rawget(self, k)
-
-				for kk, vv in pairs(v) do rawset(tbl, kk, vv) end
-
-				return k, v
-			end
-			
-            if k == "__newindex" then return k, v end
-            if k == "__index"    then return k, v end
-            if rawget(self, k)   then return k, v end
-
-            rawset(self, k, v)
-            
-            return k, v
-        end)
-	end
+--Quick solution for concating two objects. Often that's really all we want, is just
+--"hey, join A and B, and if they're not strings, make them."
+function Object:concat(value)
+    return tostring(self) .. tostring(value) 
 end
 
-function Object:implements(class)
-	local mt = getmetatable(self)
+--Called anytime a new value is set on a table. Easier than index; either uses an
+--existing setter or sets the value onto the actual table.
+function Object:newindex(key, value)
+    local mt = getmetatable(self)
 
-	while mt do
-		for _, implemented in ipairs(rawget(mt, "__implemented") or {}) do
-			if class == implemented then return true end
-		end
+    assert(self ~= Object, "'Object:newindex' is not meant to be called directly.")
 
-		mt = getmetatable(mt)
-	end
+    if mt.__set[key] then
+        return mt.__set[key](self, value)
+    end
 
-	return false
+    --We use rawset to avoid creating a metatable loop.
+    rawset(self, key, value)
 end
 
-function Object:is(class)
-    local mt, cmt
-	
-    mt  = getmetatable(self)
-	cmt = getmetatable(class)
-	
-	while mt do
-		if mt == cmt then return true end
+--Both used as the metatable tostring method, and as the "stringhelper" function.
+--If arguments are passed, converts them into the "standardized" version.
+function Object:tostring(...)
+    local mt, args, count, vars, t
+    
+    assert(self ~= Object, "'Object:tostring' is not meant to be called directly. Instead, call it via the class or instance you are trying to use.")
 
-		mt = getmetatable(mt)
-	end
+    mt     = getmetatable(self)
+    args   = { ... }
+    count  = select("#", ...)
 
-	return false
+    --If arguments were provided, we use those. If the metatable is Object, then
+    --it's a class.
+    if count > 0 then
+        vars = tostring(args[1])
+
+        for i = 2, count, 1 do
+            vars = vars .. ", " .. tostring(args[i])
+        end
+    elseif mt == Object then       
+        vars = "Class"
+    end
+
+    --If vars hasn't been defined, then we have no args, so we set it to an
+    --empty string. Otherwise, we need to add a space in front of the args
+    --for readability.
+    vars = vars and (" " .. vars) or ""
+
+    --If this is a class (and not just vars that happen to be the string "Class"),
+    --then we use self.__type. If there is no self.__type, then we use a fallback.
+    if mt == Object then
+        t = self.__type or "object"
+    
+    --Since the user might create a "type" method, we instead check if self's metatable
+    --has a __type, and fetch it directly. This way we can circumvent them superceding the
+    --.type getter, if they end up doing that.
+    elseif mt.__type then
+        t = mt.__type
+    
+    --If no type is specified, it defaults to "object"
+    else
+        t = "object"
+    end
+
+    return "[<" .. t .. ">" .. vars .. "]"
 end
 
-function Object:tostringHelper(...)
-    local args = ""
+--Returns true if an instance implements all of the provided classes. One of two
+--method that any classes actually "inherit", the way a traditional class lib works.
+function Object:implements(...)
+    local mt = getmetatable(self)
 
-    for i, v in varargs(...) do
-        if i == 1 then
-            args = tostring(v)
-        else
-            args = args .. ", " .. tostring(v)
+	for _, v in ipairs({ ... }) do
+        if not (mt.__implemented[v] or v == mt) then
+            return false
         end
     end
 
-    args = args ~= "" and " " .. args or args
+    return true
+end
+
+--Takes the class and any mixins and smushes them together into a Class. This is what's
+--used when returning the class from it's file.
+function Object:create(...)
+    local args, class
     
-	return "[<" .. self.type .. ">" .. args .. "]"
-end
+    args  = { ... }
+    class = {
+        __get         = {},
+        __set         = {},
+        __implemented = {},
+        __index    = self.index,
+        __concat   = self.concat,
+        __newindex = self.newindex,
+        __tostring = self.tostring,
+        tostring   = self.tostring,
+        implements = self.implements
+    }
 
-function Object:__tostring()
-	if self.is_instance then return self:tostringHelper() end
-
-    return self:tostringHelper("Class")
-end
-
-function Object:__concat(value)
-	return tostring(self) .. tostring(value)
-end
-
-function Object.__get:type()
-    return self.__type or getmetatable(self).__type
-end
-
-function Object.__get:is_instance()
-    local p = private[self]
-
-    if p then return p.instance end
+    assert(args[1].new, "Class is missing 'new' constructor.")
     
-	return false
+    class.__constructor = args[1].new
+
+    --We wrap the new constructor in an anonymous function that places an assert at the top.
+    --We need to make sure that the user doesn't circumvent the constructor process, or else
+    --a bunch of stuff would go sideways without being super clear why.
+    args[1].new = function(self, ...)
+        assert(self ~= class, "You can not call the 'new' method directly.")
+
+        return class.__constructor(self, ...)
+    end
+
+    --We iterate backwards so that the first argument can be the main class, followed
+    --by all it's mixins.
+    for i = #args, 1, -1 do
+        --All classes get placed in the __implemented table for reference later.
+        class.__implemented[args[i]] = true
+
+        --Add getters.
+        for k, v in pairs(args[i].__get or {}) do
+            class.__get[k] = v
+        end
+
+        --Add setters.
+        for k, v in pairs(args[i].__set or {}) do
+            class.__set[k] = v
+        end
+
+        --Add everything else.
+        for k, v in pairs(args[i]) do
+            if k == "__get" then goto continue end
+            if k == "__set" then goto continue end
+            
+            --Special case for __type, since we make presumptions about what "__type" is.
+            if k == "__type" then assert(type(v) == "string", "Class '__type' metavalue must be of type 'string'.") end
+
+            class[k] = v
+
+            ::continue::
+        end
+    end
+
+    --Create the class. The class itself has it's own metatable that is totally
+    --different from an instance's mt. All it needs is __call, for constructing
+    --instances, and __concat and __tostring for debugging. __metatable is set to
+    --Object, since thats "kinda" sorta true, although that's clearly not actually
+    --true. But it lets you pretty quickly check if something is a class by checking
+    --if it's metatable is Object.
+    return setmetatable(class, {
+        __call      = self.call,
+        __concat    = self.concat,
+        __tostring  = self.tostring,
+        __metatable = Object
+    })
 end
 
-Object.__type = "object"
-
-return Object
+return setmetatable(Object, {
+    __tostring = function()
+        return "[<object> Class]"
+    end,
+    __metatable = Object
+})
