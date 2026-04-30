@@ -78,12 +78,13 @@ function Object:newindex(key, value)
 end
 
 --Both used as the metatable tostring method, and as the "stringhelper" function.
---If arguments are passed, converts them into the "standardized" version. Both used
---as the __tostring metamethod, and exposed as an actual method which can be accessed
---on any object.
+--If arguments are passed, converts them into the "standardized" version.
 function Object:tostring(...)
-    local args, count, vars
+    local mt, args, count, vars, t
     
+    assert(self ~= Object, "'Object:tostring' is not meant to be called directly. Instead, call it via the class or instance you are trying to use.")
+
+    mt     = getmetatable(self)
     args   = { ... }
     count  = select("#", ...)
 
@@ -95,7 +96,7 @@ function Object:tostring(...)
         for i = 2, count, 1 do
             vars = vars .. ", " .. tostring(args[i])
         end
-    elseif getmetatable(self) == Object then
+    elseif mt == Object then       
         vars = "Class"
     end
 
@@ -104,7 +105,23 @@ function Object:tostring(...)
     --for readability.
     vars = vars and (" " .. vars) or ""
 
-    return "[<" .. (self.type or "object") .. ">" .. vars .. "]"
+    --If this is a class (and not just vars that happen to be the string "Class"),
+    --then we use self.__type. If there is no self.__type, then we use a fallback.
+    if mt == Object then
+        t = self.__type or "object"
+    
+    --Since the user might create a "type" method, we instead check if self's metatable
+    --has a __type, and fetch it directly. This way we can circumvent them superceding the
+    --.type getter, if they end up doing that.
+    elseif mt.__type then
+        t = mt.__type
+    
+    --If no type is specified, it defaults to "object"
+    else
+        t = "object"
+    end
+
+    return "[<" .. t .. ">" .. vars .. "]"
 end
 
 --Returns true if an instance implements all of the provided classes. One of two
