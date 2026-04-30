@@ -3,6 +3,14 @@ local Object, private
 Object  = {}
 private = require(... .. ".instances")
 
+--Helper function that creates the table for an object.
+function Object:init()
+    return {
+        __get = {},
+        __set = {}
+    }
+end
+
 --What is used internally when creating an object instance. This creates the
 --private table, creates the actual instance, as well as handles non traditional
 --return values.
