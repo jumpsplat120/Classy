@@ -130,7 +130,7 @@ function Object:implements(...)
     local mt = getmetatable(self)
 
 	for _, v in ipairs({ ... }) do
-        if not mt.__implemented[v] then
+        if not (mt.__implemented[v] or v == mt) then
             return false
         end
     end
