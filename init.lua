@@ -190,6 +190,9 @@ function Object:create(...)
             if k == "__get" then goto continue end
             if k == "__set" then goto continue end
             
+            --Special case for __type, since we make presumptions about what "__type" is.
+            if k == "__type" then assert(type(v) == "string", "Class '__type' metavalue must be of type 'string'.") end
+
             class[k] = v
 
             ::continue::
