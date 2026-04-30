@@ -62,8 +62,7 @@ function Object:concat(value)
     return tostring(self) .. tostring(value) 
 end
 
---Called anytime a new value is set on a table. Easier than index; either uses an
---existing setter or sets the value onto the actual table.
+--Called anytime a new value is set on a table.
 function Object:newindex(key, value)
     local mt = getmetatable(self)
 
@@ -83,7 +82,7 @@ function Object:tostring(...)
     local mt, args, count, vars, t
     
     assert(self ~= Object, "'Object:tostring' is not meant to be called directly. Instead, call it via the class or instance you are trying to use.")
-
+    
     mt     = getmetatable(self)
     args   = { ... }
     count  = select("#", ...)
@@ -96,7 +95,7 @@ function Object:tostring(...)
         for i = 2, count, 1 do
             vars = vars .. ", " .. tostring(args[i])
         end
-    elseif mt == Object then       
+    elseif mt == Object then
         vars = "Class"
     end
 
@@ -185,15 +184,39 @@ function Object:create(...)
             class.__set[k] = v
         end
 
-        --Add everything else.
+        --Add everything else. Skip anything that needs to be skipped.
         for k, v in pairs(args[i]) do
             if k == "__get" then goto continue end
             if k == "__set" then goto continue end
-            
-            --Special case for __type, since we make presumptions about what "__type" is.
-            if k == "__type" then assert(type(v) == "string", "Class '__type' metavalue must be of type 'string'.") end
 
-            class[k] = v
+            --Special case for __type, since we make presumptions about what "__type" is.
+            if k == "__type" then
+                assert(type(v) == "string", "Class '__type' metavalue must be of type 'string'.")
+                
+                ---@diagnostic disable-next-line: assign-type-mismatch
+                class[k] = v
+
+            --Special case for a user defined __index. We create a function that calls the user's
+            --__index first, and only calls Object's __index after, if the first one returns nil.
+            elseif k == "__index" then
+                function class.__index(this, key)
+                    return v(this, key) or self.index(this, key)
+                end
+            
+
+            --Special case for a user defined __newindex. We create a function that calls the
+            --user's __newindex first, and ONLY calls Object's newindex if the user's __newindex
+            --returns falsey. Basically, if the user successfully sets a value, they should return
+            --true.
+            elseif k == "__newindex" then
+                function class.__newindex(this, key, value)
+                    if not v(this, key, value) then
+                        self.newindex(this, key, value)
+                    end
+                end
+            else
+                class[k] = v
+            end
 
             ::continue::
         end
