@@ -80,7 +80,7 @@ end
 --If arguments are passed, converts them into the "standardized" version.
 function Object:tostring(...)
     local mt, args, count, vars, t
-    
+
     assert(self ~= Object, "'Object:tostring' is not meant to be called directly. Instead, call it via the class or instance you are trying to use.")
     
     mt     = getmetatable(self)
