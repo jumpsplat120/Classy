@@ -3,7 +3,7 @@ local Object, private
 Object  = {}
 private = require(... .. ".instances")
 
---Helper function that creates the table for an object.
+---@see Object.init
 function Object:init()
     return {
         __get = {},
@@ -11,9 +11,7 @@ function Object:init()
     }
 end
 
---What is used internally when creating an object instance. This creates the
---private table, creates the actual instance, as well as handles non traditional
---return values.
+---@see Object.call
 function Object:call(...)
     local ins, r
     
@@ -30,8 +28,7 @@ function Object:call(...)
 	return r or ins
 end
 
---Is called when the key doesn't exist on the table. 99% of the time that will be
---a reference to one of the class instance's methods.
+---@see Object.index
 function Object:index(key)
     local mt, result
     
@@ -56,89 +53,7 @@ function Object:index(key)
     return result
 end
 
---Quick solution for concating two objects. Often that's really all we want, is just
---"hey, join A and B, and if they're not strings, make them."
-function Object:concat(value)
-    return tostring(self) .. tostring(value) 
-end
-
---Called anytime a new value is set on a table.
-function Object:newindex(key, value)
-    local mt = getmetatable(self)
-
-    assert(self ~= Object, "'Object:newindex' is not meant to be called directly.")
-
-    if mt.__set[key] then
-        return mt.__set[key](self, value)
-    end
-
-    --We use rawset to avoid creating a metatable loop.
-    rawset(self, key, value)
-end
-
---Both used as the metatable tostring method, and as the "stringhelper" function.
---If arguments are passed, converts them into the "standardized" version.
-function Object:tostring(...)
-    local mt, args, count, vars, t
-
-    assert(self ~= Object, "'Object:tostring' is not meant to be called directly. Instead, call it via the class or instance you are trying to use.")
-    
-    mt     = getmetatable(self)
-    args   = { ... }
-    count  = select("#", ...)
-
-    --If arguments were provided, we use those. If the metatable is Object, then
-    --it's a class.
-    if count > 0 then
-        vars = tostring(args[1])
-
-        for i = 2, count, 1 do
-            vars = vars .. ", " .. tostring(args[i])
-        end
-    elseif mt == Object then
-        vars = "Class"
-    end
-
-    --If vars hasn't been defined, then we have no args, so we set it to an
-    --empty string. Otherwise, we need to add a space in front of the args
-    --for readability.
-    vars = vars and (" " .. vars) or ""
-
-    --If this is a class (and not just vars that happen to be the string "Class"),
-    --then we use self.__type. If there is no self.__type, then we use a fallback.
-    if mt == Object then
-        t = self.__type or "object"
-    
-    --Since the user might create a "type" method, we instead check if self's metatable
-    --has a __type, and fetch it directly. This way we can circumvent them superceding the
-    --.type getter, if they end up doing that.
-    elseif mt.__type then
-        t = mt.__type
-    
-    --If no type is specified, it defaults to "object"
-    else
-        t = "object"
-    end
-
-    return "[<" .. t .. ">" .. vars .. "]"
-end
-
---Returns true if an instance implements all of the provided classes. One of two
---method that any classes actually "inherit", the way a traditional class lib works.
-function Object:implements(...)
-    local mt = getmetatable(self)
-
-	for _, v in ipairs({ ... }) do
-        if not (mt.__implemented[v] or v == mt) then
-            return false
-        end
-    end
-
-    return true
-end
-
---Takes the class and any mixins and smushes them together into a Class. This is what's
---used when returning the class from it's file.
+---@see Object.create
 function Object:create(...)
     local args, class
     
@@ -168,9 +83,7 @@ function Object:create(...)
         return class.__constructor(self, ...)
     end
 
-    --We iterate backwards so that the first argument can be the main class, followed
-    --by all it's mixins.
-    for i = #args, 1, -1 do
+    for i = 1, #args, 1 do
         --All classes get placed in the __implemented table for reference later.
         class.__implemented[args[i]] = true
 
@@ -193,7 +106,6 @@ function Object:create(...)
             if k == "__type" then
                 assert(type(v) == "string", "Class '__type' metavalue must be of type 'string'.")
                 
-                ---@diagnostic disable-next-line: assign-type-mismatch
                 class[k] = v
 
             --Special case for a user defined __index. We create a function that calls the user's
@@ -236,9 +148,92 @@ function Object:create(...)
     })
 end
 
-return setmetatable(Object, {
+---@see Object.concat
+function Object:concat(value)
+    return tostring(self) .. tostring(value) 
+end
+
+---@see Object.newindex
+function Object:newindex(key, value)
+    local mt = getmetatable(self)
+
+    assert(self ~= Object, "'Object:newindex' is not meant to be called directly.")
+
+    if mt.__set[key] then
+        return mt.__set[key](self, value)
+    end
+
+    --We use rawset to avoid creating a metatable loop.
+    rawset(self, key, value)
+end
+
+---@see Object.tostring
+function Object:tostring(...)
+    local mt, args, count, vars, t
+
+    assert(self ~= Object, "'Object:tostring' is not meant to be called on the Object class. Instead, call it via the instance you are trying to use.")
+    
+    mt     = getmetatable(self)
+    args   = { ... }
+    count  = select("#", ...)
+
+    --If arguments were provided, we use those. If the metatable is Object, then
+    --it's a class.
+    if count > 0 then
+        vars = tostring(args[1])
+
+        for i = 2, count, 1 do
+            vars = vars .. ", " .. tostring(args[i])
+        end
+    elseif mt == Object then
+        vars = "Class"
+    end
+
+    --If vars hasn't been defined, then we have no args, so we set it to an
+    --empty string. Otherwise, we need to add a space in front of the args
+    --for readability.
+    vars = vars and (" " .. vars) or ""
+
+    --If this is a class (and not just vars that happen to be the string "Class"),
+    --then we use self.__type. If there is no self.__type, then we use a fallback.
+    if mt == Object then
+        t = self.__type or "object"
+    
+    --Since the user might create a "type" method, we instead check if self's metatable
+    --has a __type, and fetch it directly. This way we can circumvent them superceding the
+    --.type getter, if they end up doing that.
+    elseif mt.__type then
+        t = mt.__type
+    
+    --If no type is specified, it defaults to "object"
+    else
+        t = "object"
+    end
+
+    return "[<" .. t .. ">" .. vars .. "]"
+end
+
+---@see Object.implements
+function Object:implements(...)
+    local mt = getmetatable(self)
+
+    assert(self ~= Object, "'Object:implements' is not meant to be called on the Object class. Instead, call it via the instance you are trying to check.")
+
+	for _, v in ipairs({ ... }) do
+        if not (mt.__implemented[v] or v == mt) then
+            return false
+        end
+    end
+
+    return true
+end
+
+---@type Classy.Object
+local Class = setmetatable(Object, {
     __tostring = function()
         return "[<object> Class]"
     end,
     __metatable = Object
 })
+
+return Class
