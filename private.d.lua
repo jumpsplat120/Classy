@@ -1,1 +1,4 @@
----@alias Classy.private table A weak table that contains [Classy class](lua://Classy.Class) instances as keys. The `instances.lua` file should be required inside class construction files, but not required outside of them. This way, the user can have access to truly private values for instances.
+---A weak table that contains [Classy class](lua://Classy.Class) instances as keys. The `instances.lua` file
+---should be required inside class construction files, but not required outside of them. This way, the user
+---can have access to truly private values for instances.
+---@class Classy.private

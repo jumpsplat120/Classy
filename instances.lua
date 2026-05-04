@@ -1,7 +1,9 @@
 local instances, mt
 
+mt = {}
+
+---@type Classy.private
 instances = {}
-mt        = {}
 
 mt.__mode = "k"
 
