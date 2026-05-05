@@ -83,7 +83,7 @@ function Object:create(...)
         return class.__constructor(self, ...)
     end
 
-    for i = 1, #args, 1 do
+    for i = #args, 1, -1 do
         --All classes get placed in the __implemented table for reference later.
         class.__implemented[args[i]] = true
 
