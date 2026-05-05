@@ -1,9 +1,9 @@
 local Object, private
 
+---@type Classy.Object
 Object  = {}
 private = require(... .. ".instances")
 
----@see Object.init
 function Object:init()
     return {
         __get = {},
@@ -11,7 +11,6 @@ function Object:init()
     }
 end
 
----@see Object.call
 function Object:call(...)
     local ins, r
     
@@ -28,7 +27,6 @@ function Object:call(...)
 	return r or ins
 end
 
----@see Object.index
 function Object:index(key)
     local mt, result
     
@@ -53,7 +51,6 @@ function Object:index(key)
     return result
 end
 
----@see Object.create
 function Object:create(...)
     local args, class
     
@@ -148,12 +145,10 @@ function Object:create(...)
     })
 end
 
----@see Object.concat
 function Object:concat(value)
     return tostring(self) .. tostring(value) 
 end
 
----@see Object.newindex
 function Object:newindex(key, value)
     local mt = getmetatable(self)
 
@@ -167,7 +162,6 @@ function Object:newindex(key, value)
     rawset(self, key, value)
 end
 
----@see Object.tostring
 function Object:tostring(...)
     local mt, args, count, vars, t
 
@@ -213,7 +207,6 @@ function Object:tostring(...)
     return "[<" .. t .. ">" .. vars .. "]"
 end
 
----@see Object.implements
 function Object:implements(...)
     local mt = getmetatable(self)
 
