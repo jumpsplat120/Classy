@@ -5,7 +5,7 @@
 
 ---A special table that has been created using Classy. Has a `__call` metamethod that
 ---will automatically call `new`, using itself as the `__index` for the new instance being created. You can
----verify if a class is a Classy class by checking it's metatable and comparing it to (Object)[lua://Classy.Object].
+---verify if a class is a Classy class by checking it's metatable and comparing it to [Object](lua://Classy.Object).
 ---@class Classy.Class
 
 ---The base object class, provided by the [Classy](https://github.com/jumpsplat120/Classy)
