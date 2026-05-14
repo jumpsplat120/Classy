@@ -7,6 +7,7 @@
 ---will automatically call `new`, using itself as the `__index` for the new instance being created. You can
 ---verify if a class is a Classy class by checking it's metatable and comparing it to [Object](lua://Classy.Object).
 ---@class Classy.Class
+local ObjectClass = {}
 
 ---The base object class, provided by the [Classy](https://github.com/jumpsplat120/Classy)
 ---library. Used to create Classy classes, but is not, a true class. However, it does have a circular
@@ -14,14 +15,14 @@
 ---is to `getmetatable(class) == Object`, so in that sense, it *will* read as one. It does not, however, have
 ---any of the other features of a Classy class, and you can not create instances from it.
 ---@class Classy.Object
-Object = {}
+local Object = {}
 
 ---Helper function that creates the table for a class. Classes can (but do not need to) contain
 ---getters and setters, which fall under their own `__get` and `__set` subtable. This prevents
 ---the need to manually type that out, and also allows for potential updates that may modify
 ---the initally created table.
 ---@return Classy.PreClass #The inital class table. Note that this is a [preclass](lua://Classy.PreClass) until it's been passed through [Object:create()](lua://Classy.Object.create).
-function Object:init() end
+function ObjectClass:init() end
 
 ---Takes the main class and any mixin classes and smushes them together into a [Classy](lua://Classy.Class).
 ---This function *must* be called before returning from a class file, since it's what turns a table into
@@ -32,7 +33,7 @@ function Object:init() end
 ---using the Class and passing in `self`.
 ---@param ... Classy.PreClass One or more [preclasses](lua://Classy.PreClass). The first one is treated as the "main" class, and will be the one that is used when `__call`ing. The first preclass needs at minimum a `new` method to be turned into a true class.
 ---@return Classy.Class
-function Object:create(...) end
+function ObjectClass:create(...) end
 
 ---Used as the `__call` metamethod for [Classy classes](lua://Classy.Class). Will set the metatable of the new
 ---instance, and place a reference into [private](lua://Classy.private). Finally, will call `new` on the class,
@@ -42,7 +43,7 @@ function Object:create(...) end
 ---@private
 ---@param ... any All parameters are passed through to the `new` method of the class the instance is being created from.
 ---@return any #While usually a class instance, if the `new` method returns a value, that will be returned instead.
-function Object:call(...) end
+function ObjectClass:call(...) end
 
 ---Used as the `__index` metamethod for [Classy classes](lua://Classy.Class). Handles getters and contains
 ---special logic for `type`, which reads from the `__type` metaproperty, acting like a getter, but allowing
@@ -53,7 +54,7 @@ function Object:call(...) end
 ---@private
 ---@param key any
 ---@return any
-function Object:index(key) end
+function ObjectClass:index(key) end
 
 ---Used as the `__concat` metamethod for [Classy classes](lua://Classy.Class). Simply attempts to tostring
 ---both values and concatenate them together.
@@ -62,7 +63,7 @@ function Object:index(key) end
 ---@private
 ---@param value any
 ---@return string
-function Object:concat(value) end
+function ObjectClass:concat(value) end
 
 ---Used as the `__newindex` metamethod for [Classy classes](lua://Classy.Class). Handles setter logic.
 ---
@@ -70,7 +71,7 @@ function Object:concat(value) end
 ---@private
 ---@param key any
 ---@param value any
-function Object:newindex(key, value) end
+function ObjectClass:newindex(key, value) end
 
 ---Used as the `__tostring` metamethod for [Classy classes](lua://Classy.Class), but also used as a helper
 ---method for turning an object into a string. Any values can be passed in, and they will be joined
@@ -84,7 +85,7 @@ function Object:newindex(key, value) end
 ---Attempts to use the `__type` metaproperty of the class, but if one does not exist, will use "object" as
 ---a fallback.
 ---
----This will error if called on Object.
+---This will error if called on `Object`.
 ---@param ... any All values passed in will be `tostring`ed.
 ---@return string #The output will have the format `[<instance_type> foo, bar, baz]`, angle brackets included.
 function Object:tostring(...) end
@@ -93,7 +94,7 @@ function Object:tostring(...) end
 ---classes/mixins it implements, which can be helpful when attempting to filter out objects that may or may not
 ---have the functionality you desire. Will return true only if all classes have been implemented.
 ---
----This will error if called on Object.
+---This will error if called on `Object`.
 ---@param ... Classy.Class
 ---@return boolean
 function Object:implements(...) end
